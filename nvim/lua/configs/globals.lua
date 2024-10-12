@@ -6,7 +6,7 @@ g.do_filetype_lua = 1
 if vim.loop.os_uname().sysname == "Darwin" then
 	g.python3_host_prog = "/opt/homebrew/bin/python3"
 else
-	g.python3_host_prog = "/usr/bin/python3"
+	g.python3_host_prog = "/usr/local/bin/python3"
 end
 
 -- g.python_recommended_style = 0
