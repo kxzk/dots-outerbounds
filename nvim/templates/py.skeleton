@@ -1,5 +1,49 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+from metaflow import FlowSpec, step, Parameter
 
-if __name__ == "__main__":
-    pass
+class MyFlow(FlowSpec):
+    
+    # Define parameters for the flow
+    input_file = Parameter('input_file', help='Path to the input data file', default='data/input.csv')
+    output_file = Parameter('output_file', help='Path to save the processed data', default='data/output.csv')
+
+    @step
+    def start(self):
+        """Start of the flow"""
+        print("Starting the flow...")
+        self.next(self.load_data)
+
+    @step
+    def load_data(self):
+        """Load data from the input file"""
+        import pandas as pd
+
+        # Load data
+        self.data = pd.read_csv(self.input_file)
+        print(f"Loaded data from {self.input_file}")
+
+        # Move to the next step
+        self.next(self.process_data)
+
+    @step
+    def process_data(self):
+        """Process the data"""
+        # Example processing: simple data transformation
+        self.data['new_column'] = self.data['existing_column'] * 2  # Example transformation
+        print("Processed data.")
+
+        # Move to the next step
+        self.next(self.save_data)
+
+    @step
+    def save_data(self):
+        """Save the processed data to output file"""
+        self.data.to_csv(self.output_file, index=False)
+        print(f"Saved processed data to {self.output_file}")
+
+    @step
+    def end(self):
+        """End of the flow"""
+        print("Flow completed successfully.")
+
+if __name__ == '__main__':
+    MyFlow()
