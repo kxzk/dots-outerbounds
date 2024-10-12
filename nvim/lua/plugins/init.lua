@@ -12,7 +12,7 @@ return {
 			},
 		},
 	},
-	{ "github/copilot.vim", tag = "v1.38.0" },
+	{ "github/copilot.vim", tag = "v1.41.0" },
 	-- Fuzzy Finder (files, lsp, etc)
 	{
 		"nvim-telescope/telescope.nvim",
