@@ -2,7 +2,6 @@ alias ..="z .."
 alias ...="z ../.."
 
 # util
-alias sb="cd && source .bashrc"
 alias py="python"
 alias g="git"
 alias gp="git pull"
