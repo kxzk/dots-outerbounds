@@ -1,0 +1,17 @@
+#!/bin/bash
+
+teams_query='query Teams {
+    teams {
+        nodes {
+            id
+            name
+        }
+    }
+}'
+
+curl -s -X POST \
+    -H "Content-Type: application/json" \
+    -H "Authorization: $LINEAR_API_KEY" \
+    https://api.linear.app/graphql \
+    -d "{\"query\": $(echo "$teams_query" | jq -R -s .)}" | \
+jq -r '.data.teams.nodes[] | "\(.name): \(.id)"
