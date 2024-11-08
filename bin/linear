@@ -1,0 +1,72 @@
+#!/bin/bash
+
+if [ "$#" -lt 2 ]; then
+    echo "Usage: $0 \"Issue Title\" \"Issue Description\""
+    exit 1
+fi
+
+TITLE="$1"
+DESCRIPTION="$2"
+TEAM_ID="$LINEAR_TEAM_ID"
+USER_ID="$LINEAR_USER_ID"
+
+create_issue_query='mutation IssueCreate($title: String!, $description: String!, $teamId: String!, $assigneeId: String!) {
+    issueCreate(input: {
+        title: $title,
+        description: $description,
+        teamId: $teamId,
+        assigneeId: $assigneeId
+    }) {
+        success
+        issue {
+            id
+            title
+            branchName
+            identifier
+            assignee {
+                name
+            }
+        }
+    }
+}'
+
+response=$(curl -s -X POST \
+    -H "Content-Type: application/json" \
+    -H "Authorization: $LINEAR_API_KEY" \
+    https://api.linear.app/graphql \
+    -d "{
+        \"query\": $(echo "$create_issue_query" | jq -R -s .),
+        \"variables\": {
+            \"title\": \"$TITLE\",
+            \"description\": \"$DESCRIPTION\",
+            \"teamId\": \"$TEAM_ID\",
+            \"assigneeId\": \"$USER_ID\"
+        }
+    }")
+
+success=$(echo "$response" | jq -r '.data.issueCreate.success')
+branch_name=$(echo "$response" | jq -r '.data.issueCreate.issue.branchName')
+issue_id=$(echo "$response" | jq -r '.data.issueCreate.issue.id')
+issue_identifier=$(echo "$response" | jq -r '.data.issueCreate.issue.identifier')
+assignee_name=$(echo "$response" | jq -r '.data.issueCreate.issue.assignee.name')
+
+if [ "$success" != "true" ]; then
+    echo "Failed to create issue. Response:"
+    echo "$response" | jq '.'
+    exit 1
+fi
+
+echo "✓ Linear issue created successfully"
+echo "  • Issue ID: $issue_id"
+echo "  • Issue Number: $issue_identifier"
+echo "  • Assigned to: $assignee_name"
+
+if [ -n "$branch_name" ]; then
+    git checkout -b "$branch_name"
+    echo "✓ Created and checked out branch: $branch_name"
+else
+    safe_title=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-\|-$//')
+    branch_name="feature/$safe_title"
+    git checkout -b "$branch_name"
+    echo "✓ Created and checked out branch: $branch_name"
+fi
