@@ -1,9 +1,6 @@
 from metaflow import FlowSpec, step, Parameter
 
 class MyFlow(FlowSpec):
-    
-    input_file = Parameter('input_file', help='Path to the input data file', default='data/input.csv')
-    output_file = Parameter('output_file', help='Path to save the processed data', default='data/output.csv')
 
     @step
     def start(self):
