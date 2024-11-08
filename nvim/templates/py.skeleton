@@ -8,7 +8,7 @@ class MyFlow(FlowSpec):
     @step
     def start(self):
         """Start of the flow"""
-        self.next()
+        self.next(self.end)
 
     @step
     def end(self):
