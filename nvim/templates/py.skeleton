@@ -4,13 +4,13 @@ class MyFlow(FlowSpec):
 
     @step
     def start(self):
-        """Start of the flow"""
+        """start of the flow"""
         self.next(self.end)
 
     @step
     def end(self):
-        """End of the flow"""
-        print("Flow completed successfully.")
+        """end of the flow"""
+        print("[info] end of flow")
 
 if __name__ == '__main__':
     MyFlow()
