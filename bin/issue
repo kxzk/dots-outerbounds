@@ -1,0 +1,99 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# Check if required environment variables are set
+if [ -z "${LINEAR_API_KEY:-}" ] || [ -z "${LINEAR_TEAM_ID:-}" ]; then
+    echo "[Error] LINEAR_API_KEY and LINEAR_TEAM_ID must be set"
+    exit 1
+fi
+
+# Check arguments
+if [ "$#" -lt 2 ]; then
+    echo "Usage: $0 <prefix> <title words...>"
+    echo "Prefix must be one of: feature, bugfix, hotfix, docs"
+    echo "Example: $0 feature implement user authentication"
+    exit 1
+fi
+
+# Validate prefix
+prefix=$1
+shift  # Remove prefix from arguments
+valid_prefixes=("feature" "bugfix" "hotfix" "docs")
+if [[ ! " ${valid_prefixes[@]} " =~ " ${prefix} " ]]; then
+    echo "[Error] Invalid prefix. Must be one of: ${valid_prefixes[*]}"
+    exit 1
+fi
+
+# Combine remaining arguments into title
+title="$*"
+
+# Get authenticated user's ID
+echo "Creating Linear issue..."
+me_query='query Me { viewer { id } }'
+user_response=$(curl -s -X POST \
+    -H "Content-Type: application/json" \
+    -H "Authorization: $LINEAR_API_KEY" \
+    https://api.linear.app/graphql \
+    -d "{\"query\": $(echo "$me_query" | jq -R -s .)}")
+
+user_id=$(echo "$user_response" | jq -r '.data.viewer.id')
+if [ -z "$user_id" ] || [ "$user_id" = "null" ]; then
+    echo "Failed to get user ID"
+    exit 1
+fi
+
+# Create the issue
+create_issue_query='mutation IssueCreate($title: String!, $teamId: String!, $assigneeId: String!) {
+    issueCreate(input: {title: $title, teamId: $teamId, assigneeId: $assigneeId}) {
+        success
+        issue {
+            identifier
+            url
+            assignee { name }
+        }
+    }
+}'
+
+response=$(curl -s -X POST \
+    -H "Content-Type: application/json" \
+    -H "Authorization: $LINEAR_API_KEY" \
+    https://api.linear.app/graphql \
+    -d "{
+        \"query\": $(echo "$create_issue_query" | jq -R -s .),
+        \"variables\": {
+            \"title\": \"$title\",
+            \"teamId\": \"$LINEAR_TEAM_ID\",
+            \"assigneeId\": \"$user_id\"
+        }
+    }")
+
+if [ "$(echo "$response" | jq -r '.data.issueCreate.success')" != "true" ]; then
+    echo "Failed to create issue"
+    exit 1
+fi
+
+# Extract issue details
+issue=$(echo "$response" | jq -r '.data.issueCreate.issue')
+identifier=$(echo "$issue" | jq -r '.identifier')
+issue_url=$(echo "$issue" | jq -r '.url')
+
+# Create branch name
+safe_title=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-\|-$//')
+branch_name="${prefix}/${identifier}-${safe_title}"
+
+# Create and switch to new branch
+git checkout -b "$branch_name"
+
+# Colors
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Print summary
+echo ""
+echo -e "${GREEN}✓${NC} Created Linear issue: ${YELLOW}$identifier${NC}"
+echo -e "${GREEN}✓${NC} Issue URL: ${BLUE}$issue_url${NC}"
+echo -e "${GREEN}✓${NC} Created branch: ${YELLOW}$branch_name${NC}"
+echo ""
